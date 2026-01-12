@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #3b82f6;
+  --primary-dark: #2563eb;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+}
+
+body {
+  @apply bg-slate-950 text-white antialiased;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-slate-900;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-700 rounded-full;
+}
+
+/* Glass effect */
+.glass {
+  @apply bg-white/5 backdrop-blur-xl border border-white/10;
+}
+
+/* Gradient text */
+.gradient-text {
+  @apply bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent;
+}
+
+/* Card hover effect */
+.card-hover {
+  @apply transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-blue-500/10;
+}
+
+/* Button styles */
+.btn-primary {
+  @apply inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 
+         hover:from-blue-500 hover:to-blue-400 rounded-xl font-semibold transition-colors duration-200 
+         shadow-lg shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed 
+         whitespace-nowrap text-center;
+}
+
+.btn-secondary {
+  @apply inline-flex items-center justify-center px-6 py-3 bg-slate-800 hover:bg-slate-700 
+         border border-slate-700 rounded-xl font-semibold transition-colors duration-200 
+         whitespace-nowrap text-center;
+}
+
+.btn-danger {
+  @apply inline-flex items-center justify-center px-4 py-2 bg-red-600/20 hover:bg-red-600/30 
+         text-red-400 rounded-lg font-medium transition-colors duration-200 whitespace-nowrap;
+}
+
+/* Input styles */
+.input {
+  @apply w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl 
+         focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none
+         placeholder:text-slate-500 transition-all duration-200;
+}
+
+/* Status badges */
+.badge-active {
+  @apply px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-full text-xs font-medium;
+}
+.badge-past-due {
+  @apply px-3 py-1 bg-amber-500/20 text-amber-400 rounded-full text-xs font-medium;
+}
+.badge-canceled {
+  @apply px-3 py-1 bg-slate-500/20 text-slate-400 rounded-full text-xs font-medium;
+}
+
+/* Animations */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(59, 130, 246, 0.5); }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}
+
+
+.float {
+  animation: float 3s ease-in-out infinite;
+}
