@@ -19,12 +19,25 @@ export function Navbar() {
     }, []);
 
     const navLinks = [
-        { name: "Home", href: "/" },
         { name: "Features", href: "#features" },
-        { name: "Problem", href: "#problem" },
-        { name: "Solutions", href: "#solutions" },
-        { name: "Pricing", href: "#pricing" },
+        { name: "Problems", href: "#problems" },
+        { name: "How It Works", href: "#how-it-works" },
     ];
+
+    const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+        if (href.startsWith("#")) {
+            e.preventDefault();
+            const element = document.querySelector(href);
+            if (element) {
+                const offsetTop = element.getBoundingClientRect().top + window.scrollY - 80;
+                window.scrollTo({
+                    top: offsetTop,
+                    behavior: "smooth"
+                });
+            }
+            setIsMobileMenuOpen(false);
+        }
+    };
 
     return (
         <>
@@ -49,13 +62,14 @@ export function Navbar() {
                     {/* Desktop Nav */}
                     <nav className="hidden md:flex items-center gap-1 bg-white/5 rounded-full px-2 py-1 border border-white/10 backdrop-blur-md">
                         {navLinks.map((link) => (
-                            <Link
+                            <a
                                 key={link.name}
                                 href={link.href}
-                                className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors relative"
+                                onClick={(e) => handleNavClick(e, link.href)}
+                                className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors relative cursor-pointer"
                             >
                                 {link.name}
-                            </Link>
+                            </a>
                         ))}
                     </nav>
 
@@ -87,27 +101,22 @@ export function Navbar() {
                 >
                     <div className="flex flex-col gap-6 text-center">
                         {navLinks.map((link) => (
-                            <Link
+                            <a
                                 key={link.name}
                                 href={link.href}
                                 className="text-2xl font-medium text-white"
-                                onClick={() => setIsMobileMenuOpen(false)}
+                                onClick={(e) => handleNavClick(e, link.href)}
                             >
                                 {link.name}
-                            </Link>
+                            </a>
                         ))}
                         <div className="flex flex-col gap-4 mt-8">
                             <Link
-                                href="/login"
-                                className="text-white text-lg font-medium"
-                            >
-                                Log in
-                            </Link>
-                            <Link
-                                href="/signup"
+                                href="/dashboard"
                                 className="bg-green-500 text-black py-3 rounded-full text-lg font-bold"
+                                onClick={() => setIsMobileMenuOpen(false)}
                             >
-                                Get Started
+                                Connect Wallet
                             </Link>
                         </div>
                     </div>
@@ -116,3 +125,4 @@ export function Navbar() {
         </>
     );
 }
+

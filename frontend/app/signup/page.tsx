@@ -23,8 +23,8 @@ export default function SignupPage() {
                 className="relative z-10 w-full max-w-lg"
             >
                 <div className="text-center mb-8">
-                    <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">Hubungkan Dompet Anda</h1>
-                    <p className="text-zinc-400">Pilih dompet Web3 favorit Anda untuk melanjutkan.</p>
+                    <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">Connect Your Wallet</h1>
+                    <p className="text-zinc-400">Choose your preferred Web3 wallet to continue.</p>
                 </div>
 
                 <div className="space-y-4">
@@ -58,7 +58,7 @@ export default function SignupPage() {
                                 height={40}
                             // className="rounded-full"
                             />
-                            
+
                         }
                         badges={["Recommended", "Gasless"]}
                     />
@@ -71,9 +71,9 @@ export default function SignupPage() {
                         <ShieldCheck className="w-5 h-5 text-green-500" />
                     </div>
                     <div>
-                        <h3 className="text-white font-bold text-sm mb-1">Aman & Tanpa Penitipan</h3>
+                        <h3 className="text-white font-bold text-sm mb-1">Secure & Non-Custodial</h3>
                         <p className="text-zinc-400 text-sm leading-relaxed">
-                            BaseStack tidak pernah memiliki akses ke dana Anda. Anda tetap memegang kendali penuh atas dompet Anda setiap saat.
+                            BaseStack never has access to your funds. You remain in full control of your wallet at all times.
                         </p>
                     </div>
                 </div>

@@ -73,7 +73,7 @@ export function HowItWorks() {
     ];
 
     return (
-        <section className="py-24 relative bg-black overflow-hidden">
+        <section id="how-it-works" className="py-24 relative bg-black overflow-hidden">
             {/* Connecting Line (Desktop) */}
             <div className="hidden md:block absolute top-1/2 left-0 w-full h-px bg-gradient-to-r from-transparent via-zinc-800 to-transparent z-0"></div>
 

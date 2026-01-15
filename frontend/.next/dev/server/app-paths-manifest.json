@@ -1,10 +1,4 @@
 {
-  "/_not-found/page": "app/_not-found/page.js",
-  "/checkout/page": "app/checkout/page.js",
-  "/dashboard/page": "app/dashboard/page.js",
-  "/my-subscriptions/page": "app/my-subscriptions/page.js",
   "/page": "app/page.js",
-  "/payment-success/page": "app/payment-success/page.js",
-  "/plan-created/page": "app/plan-created/page.js",
   "/signup/page": "app/signup/page.js"
 }

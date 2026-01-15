@@ -7,7 +7,7 @@
 
 const { ethers } = require('ethers');
 
-const BASE_URL = 'http://localhost:3000';
+const BASE_URL = 'http://43.228.214.222:3000';
 
 // Test wallet (random untuk testing)
 const testWallet = ethers.Wallet.createRandom();

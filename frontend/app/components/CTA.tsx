@@ -3,6 +3,13 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
+import dynamic from "next/dynamic";
+
+// Dynamic import to avoid SSR issues with WebGL
+const FaultyTerminal = dynamic(() => import("./ui/faulty-terminal"), {
+    ssr: false,
+    loading: () => <div className="absolute inset-0 bg-zinc-900" />
+});
 
 export function CTA() {
     return (
@@ -15,10 +22,23 @@ export function CTA() {
                     initial={{ opacity: 0, y: 30 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    className="relative bg-zinc-900/50 border border-white/10 rounded-[3rem] p-8 md:p-20 text-center overflow-hidden"
+                    className="relative bg-zinc-900/80 border border-white/10 rounded-[3rem] p-8 md:p-20 text-center overflow-hidden"
                 >
+                    {/* FaultyTerminal Background */}
+                    <div className="absolute inset-0 opacity-30">
+                        <FaultyTerminal
+                            digitSize={1.0}
+                            tint="#22c55e"
+                            brightness={0.4}
+                            scanlineIntensity={0.6}
+                            curvature={0.2}
+                            mouseReact={true}
+                            pageLoadAnimation={true}
+                        />
+                    </div>
+
                     {/* Inner Gradients */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent pointer-events-none" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-transparent pointer-events-none" />
                     <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-green-500/50 to-transparent opacity-50" />
                     <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-50" />
 

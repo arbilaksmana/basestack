@@ -73,7 +73,7 @@ function start() {
     console.log('[Server] Database initialized');
     
     app.listen(config.port, () => {
-      console.log(`[Server] Running on http://localhost:${config.port}`);
+      console.log(`[Server] Running on http://43.228.214.222:${config.port}`);
       console.log(`[Server] Environment: ${config.nodeEnv}`);
     });
   } catch (err) {
