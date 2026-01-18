@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
     CheckCircle2,
     ExternalLink,
     Copy,
     Check,
-    MessageCircle,
     LayoutDashboard,
     Calendar,
     Wallet,
@@ -76,20 +76,28 @@ function Confetti() {
     );
 }
 
-export default function PaymentSuccessPage() {
+function PaymentSuccessContent() {
+    const searchParams = useSearchParams();
     const [copied, setCopied] = useState(false);
     const [showConfetti, setShowConfetti] = useState(true);
 
-    // Mock data (would come from API in real app)
+    // Get data from URL params (passed from checkout)
     const subscriptionData = {
-        planName: "VIP Trading Signal",
-        merchantName: "Budi's Trading Lab",
-        amount: "10 USDC",
-        txHash: "0x1a2b3c4d5e6f7890abcdef1234567890abcdef12",
-        nextBilling: "February 12, 2026",
-        subscriberName: "Sari",
-        telegramLink: "https://t.me/vip_trading_signal"
+        planName: searchParams.get("plan") || "Subscription Plan",
+        amount: `${searchParams.get("amount") || "10"} ${searchParams.get("token") || "USDC"}`,
+        txHash: searchParams.get("txHash") || "0x0000000000000000000000000000000000000000",
+        nextBilling: getNextBillingDate(),
     };
+
+    function getNextBillingDate() {
+        const date = new Date();
+        date.setMonth(date.getMonth() + 1);
+        return date.toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric"
+        });
+    }
 
     const handleCopyTxHash = () => {
         navigator.clipboard.writeText(subscriptionData.txHash);
@@ -155,7 +163,7 @@ export default function PaymentSuccessPage() {
                             transition={{ delay: 0.6 }}
                             className="text-2xl font-bold text-white mb-2"
                         >
-                            You&apos;re all set, {subscriptionData.subscriberName}!
+                            Payment Successful!
                         </motion.h1>
 
                         <motion.p
@@ -247,24 +255,21 @@ export default function PaymentSuccessPage() {
                         transition={{ delay: 0.9 }}
                         className="space-y-3"
                     >
-                        {/* Primary Button - Access Content */}
-                        <a
-                            href={subscriptionData.telegramLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                        {/* Primary Button - My Subscriptions */}
+                        <Link
+                            href="/my-subscriptions"
                             className="w-full bg-green-500 hover:bg-green-400 text-black font-bold py-4 rounded-xl transition-all hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(34,197,94,0.3)] flex items-center justify-center gap-2"
                         >
-                            <MessageCircle className="w-5 h-5" />
-                            Access Telegram Group
-                        </a>
+                            <LayoutDashboard className="w-5 h-5" />
+                            View My Subscriptions
+                        </Link>
 
-                        {/* Secondary Button - Dashboard */}
+                        {/* Secondary Button - Home */}
                         <Link
-                            href="/dashboard"
+                            href="/"
                             className="w-full bg-white/5 hover:bg-white/10 text-white border border-white/10 font-medium py-4 rounded-xl transition-all flex items-center justify-center gap-2"
                         >
-                            <LayoutDashboard className="w-5 h-5" />
-                            Manage Subscription
+                            Back to Home
                         </Link>
                     </motion.div>
 
@@ -289,5 +294,17 @@ export default function PaymentSuccessPage() {
                 </div>
             </motion.div>
         </div>
+    );
+}
+
+export default function PaymentSuccessPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+                <div className="text-zinc-500">Loading...</div>
+            </div>
+        }>
+            <PaymentSuccessContent />
+        </Suspense>
     );
 }

@@ -38,7 +38,7 @@ app.use('/api/prices', priceRoutes);
 if (process.env.NODE_ENV === 'production') {
   const frontendPath = path.join(__dirname, '../frontend/dist');
   app.use(express.static(frontendPath));
-  
+
   // Handle SPA routing - serve index.html for all non-API routes
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api')) {
@@ -65,13 +65,33 @@ app.use((err, req, res, next) => {
   });
 });
 
+const { runKeeper } = require('./services/keeperService');
+
+// Internal Scheduler for Keeper
+function startScheduler() {
+  console.log('[Scheduler] Starting Keeper Scheduler...');
+
+  // Run immediately on startup
+  runKeeper().catch(err => console.error('[Scheduler] Initial run failed:', err.message));
+
+  // Run every 60 seconds (Aggressive for Demo/Testing)
+  // In production, change to 1 hour (60 * 60 * 1000)
+  setInterval(() => {
+    console.log('[Scheduler] Triggering Keeper...');
+    runKeeper().catch(err => console.error('[Scheduler] Run failed:', err.message));
+  }, 60 * 1000);
+}
+
 // Initialize database and start server
 function start() {
   try {
     // Initialize database tables
     initDatabase();
     console.log('[Server] Database initialized');
-    
+
+    // Start Keeper Scheduler
+    startScheduler();
+
     app.listen(config.port, () => {
       console.log(`[Server] Running on http://43.228.214.222:${config.port}`);
       console.log(`[Server] Environment: ${config.nodeEnv}`);

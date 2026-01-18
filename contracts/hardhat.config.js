@@ -19,7 +19,14 @@ module.exports = {
   },
   networks: {
     hardhat: {
-      chainId: 31337
+      chainId: 31337,
+      blockGasLimit: 30000000,
+      gas: 12000000,
+      allowUnlimitedContractSize: true
+    },
+    localhost: {
+      url: "http://127.0.0.1:8545",
+      chainId: 31337,
     },
     baseSepolia: {
       url: process.env.RPC_URL || "https://sepolia.base.org",

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
     CheckCircle2,
@@ -76,19 +77,20 @@ function Confetti() {
 }
 
 export default function PlanCreatedPage() {
+    const searchParams = useSearchParams();
     const [showConfetti, setShowConfetti] = useState(true);
     const [copiedLink, setCopiedLink] = useState(false);
     const [copiedCode, setCopiedCode] = useState(false);
 
-    // Mock data - would come from previous form/API response
+    // Get plan data from URL params (passed from CreatePlanModal)
     const planData = {
-        name: "VIP Trading Signal",
-        slug: "vip-signal-abc123",
-        priceIDRX: "Rp 150,000",
-        priceUSDC: "10 USDC"
+        name: searchParams.get("name") || "Your Plan",
+        slug: searchParams.get("slug") || "plan",
+        priceIdrx: searchParams.get("priceIdrx") || "0",
+        priceUsdc: searchParams.get("priceUsdc") || "0",
     };
 
-    const paymentLink = `https://basestack.xyz/pay/${planData.slug}`;
+    const paymentLink = `https://basestack.xyz/checkout/${planData.slug}`;
 
     const embedCode = `<a href="${paymentLink}" 
    class="basestack-button" 
@@ -174,6 +176,27 @@ export default function PlanCreatedPage() {
                         </motion.p>
                     </div>
 
+                    {/* Plan Summary */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.65 }}
+                        className="bg-zinc-950 border border-white/10 rounded-xl p-4 mb-6"
+                    >
+                        <div className="flex items-center justify-between mb-3">
+                            <span className="text-zinc-400 text-sm">Plan Name</span>
+                            <span className="text-white font-medium">{planData.name}</span>
+                        </div>
+                        <div className="flex items-center justify-between mb-3">
+                            <span className="text-zinc-400 text-sm">IDRX Price</span>
+                            <span className="text-white font-medium">Rp {parseInt(planData.priceIdrx).toLocaleString()}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-zinc-400 text-sm">USDC Price</span>
+                            <span className="text-white font-medium">{planData.priceUsdc} USDC</span>
+                        </div>
+                    </motion.div>
+
                     {/* 2. Money Tools Section */}
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
@@ -197,8 +220,8 @@ export default function PlanCreatedPage() {
                                 <button
                                     onClick={handleCopyLink}
                                     className={`px-4 py-3 rounded-lg font-medium text-sm transition-all flex items-center gap-2 ${copiedLink
-                                            ? "bg-green-500/20 text-green-400"
-                                            : "bg-white/5 hover:bg-white/10 text-white"
+                                        ? "bg-green-500/20 text-green-400"
+                                        : "bg-white/5 hover:bg-white/10 text-white"
                                         }`}
                                 >
                                     {copiedLink ? (
@@ -216,7 +239,7 @@ export default function PlanCreatedPage() {
                             </div>
 
                             <a
-                                href={paymentLink}
+                                href={`/checkout/${planData.slug}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 mt-3 transition-colors"
@@ -246,8 +269,8 @@ export default function PlanCreatedPage() {
                             <button
                                 onClick={handleCopyCode}
                                 className={`w-full py-2.5 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 ${copiedCode
-                                        ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                                        : "bg-white/5 hover:bg-white/10 text-white border border-white/10"
+                                    ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                                    : "bg-white/5 hover:bg-white/10 text-white border border-white/10"
                                     }`}
                             >
                                 {copiedCode ? (
@@ -280,13 +303,13 @@ export default function PlanCreatedPage() {
                             Back to Dashboard
                         </Link>
 
-                        <button
-                            onClick={() => window.location.href = "/dashboard"}
+                        <Link
+                            href="/dashboard"
                             className="w-full bg-white/5 hover:bg-white/10 text-white border border-white/10 font-medium py-4 rounded-xl transition-all flex items-center justify-center gap-2"
                         >
                             <Plus className="w-4 h-4" />
                             Create Another Plan
-                        </button>
+                        </Link>
                     </motion.div>
 
                     {/* Trust Footer */}
