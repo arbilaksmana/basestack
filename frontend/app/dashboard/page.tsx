@@ -24,6 +24,19 @@ import {
     LogOut
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+    Wallet,
+    ConnectWallet,
+    WalletDropdown,
+    WalletDropdownDisconnect,
+} from '@coinbase/onchainkit/wallet';
+import {
+    Address,
+    Avatar,
+    Name,
+    Identity,
+    EthBalance,
+} from '@coinbase/onchainkit/identity';
 import { useDashboard, usePlans, useBillingLogs, useSubscribers, useMerchantProfile } from "../hooks/useApi";
 import { useWallet } from "../hooks/useWallet";
 import { api, Plan, DashboardMetrics, BillingLog, Subscriber } from "../lib/api";
@@ -165,16 +178,16 @@ export default function DashboardPage() {
                             </span>
                         </div>
 
-                        {/* Custom Wallet Status Pill */}
-                        <div className="flex items-center gap-2 bg-zinc-900 border border-white/10 rounded-full px-4 h-[42px]">
+                        {/* Wallet Status Pill */}
+                        <div className="flex items-center gap-3 bg-zinc-900 border border-white/10 rounded-full px-4 h-[42px]">
                             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
                             <span className="text-sm font-medium text-white">
                                 {formattedBalance}
                             </span>
-                            <span className="text-sm font-mono text-zinc-400 ml-2">
+                            <span className="text-sm font-mono text-zinc-400">
                                 {address?.slice(0, 6)}...{address?.slice(-4)}
                             </span>
-                            <WalletIcon className="w-4 h-4 text-zinc-500 ml-2" />
+                            <WalletIcon className="w-4 h-4 text-zinc-500" />
                         </div>
 
                         {/* Switch to Subscriber View */}

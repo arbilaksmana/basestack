@@ -29,6 +29,12 @@ export function Providers(props: { children: ReactNode }) {
                 <OnchainKitProvider
                     apiKey={process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY}
                     chain={baseSepolia}
+                    config={{
+                        appearance: {
+                            mode: 'dark',
+                            theme: 'default',
+                        },
+                    }}
                 >
                     {props.children}
                 </OnchainKitProvider>
