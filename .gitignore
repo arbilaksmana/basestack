@@ -1,3 +1,4 @@
+
 # Dependencies
 node_modules/
 
@@ -43,3 +44,9 @@ temp/
 contracts/cache/
 contracts/artifacts/
 contracts/node_modules/
+
+# Next.js
+.next/
+frontend/.next/
+out/
+build/
