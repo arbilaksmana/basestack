@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, ShieldCheck, Loader2, CheckCircle, XCircle } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { api } from "../lib/api";
-import { useConnect, useAccount, useSignMessage } from "wagmi";
+import { useConnect, useAccount, useSignMessage, useDisconnect } from "wagmi";
 
 type ConnectionStatus = "idle" | "connecting" | "signing" | "success" | "error";
 
@@ -19,29 +19,49 @@ export default function SignupPage() {
 
     const { connectAsync, connectors } = useConnect();
     const { signMessageAsync } = useSignMessage();
-    const { isConnected } = useAccount();
+    const { isConnected, address } = useAccount();
+    const { disconnect } = useDisconnect();
+
+    // Check if already authenticated on mount
+    useEffect(() => {
+        const token = localStorage.getItem('auth_token');
+        const merchantData = localStorage.getItem('merchant');
+
+        if (token && merchantData && isConnected) {
+            // Already authenticated, redirect to dashboard
+            router.push('/dashboard');
+        }
+    }, [isConnected, router]);
 
     const connectWallet = async (walletType: "metamask" | "coinbase") => {
         setStatus("connecting");
         setError(null);
 
         try {
-            // Step 1: Request account access via Wagmi
-            console.log("Step 1: Connecting wallet via Wagmi...");
+            let walletAddress: string;
 
-            // Find appropriate connector
-            const connector = connectors.find(c =>
-                walletType === "coinbase"
-                    ? c.id === "coinbaseWalletSDK"
-                    : c.id === "injected"
-            );
+            // Check if already connected
+            if (isConnected && address) {
+                console.log("Wallet already connected, using existing address:", address);
+                walletAddress = address;
+            } else {
+                // Step 1: Request account access via Wagmi
+                console.log("Step 1: Connecting wallet via Wagmi...");
 
-            if (!connector) {
-                throw new Error(`Wallet connector for ${walletType} not found.`);
+                // Find appropriate connector
+                const connector = connectors.find(c =>
+                    walletType === "coinbase"
+                        ? c.id === "coinbaseWalletSDK"
+                        : c.id === "injected"
+                );
+
+                if (!connector) {
+                    throw new Error(`Wallet connector for ${walletType} not found.`);
+                }
+
+                const result = await connectAsync({ connector });
+                walletAddress = result.accounts[0];
             }
-
-            const result = await connectAsync({ connector });
-            const walletAddress = result.accounts[0];
 
             setConnectedWallet(walletAddress);
             console.log("Connected wallet:", walletAddress);
