@@ -3,16 +3,53 @@
 :root {
   --background: #000000;
   --foreground: #ffffff;
-  
+
   --primary: #4ADE80;
   --primary-foreground: #000000;
-  
+
   --muted: #27272a;
   --muted-foreground: #a1a1aa;
 
   --accent: #22c55e;
   --accent-glow: #22c55e80;
 }
+
+/* Force OnchainKit Dark Mode Overrides */
+:root {
+  --ock-bg-default: transparent;
+  --ock-bg-secondary: #18181b;
+  --ock-bg-surface: #18181b;
+  --ock-text-primary: #ffffff;
+  --ock-text-secondary: #a1a1aa;
+  --ock-border-radius: 9999px;
+}
+
+/* Aggressively target the wrapper button */
+button[data-testid="ockConnectWallet_Container"],
+[class*="ock-connect-wallet"] button,
+button[class*="ock-connect-wallet"] {
+  background-color: #18181b !important;
+  /* zinc-900 to match valid pills */
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+  height: 42px !important;
+  border-radius: 9999px !important;
+  padding-left: 16px !important;
+  padding-right: 16px !important;
+}
+
+/* Remove any white backgrounds from internal divs */
+div[class*="ock-bg-default"],
+div[class*="ock-bg-secondary"] {
+  background-color: transparent !important;
+}
+
+/* Fix text colors inside */
+span[class*="ock-text-primary"],
+div[class*="ock-text-primary"] {
+  color: #ffffff !important;
+}
+
 
 @theme inline {
   --color-background: var(--background);
@@ -23,7 +60,7 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-glow: var(--accent-glow);
-  
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }

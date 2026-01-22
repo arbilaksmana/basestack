@@ -12,6 +12,9 @@ export const metadata: Metadata = {
   description: "Automate your crypto revenue stream with BaseStack.",
 };
 
+import "@coinbase/onchainkit/styles.css";
+import { Providers } from "./providers";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -22,7 +25,7 @@ export default function RootLayout({
       <body
         className={`${manrope.className} antialiased`}
       >
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useAccount, useDisconnect, useSignMessage, useChainId } from 'wagmi';
 import { api } from '../lib/api';
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'signing' | 'connected' | 'error';
@@ -18,15 +19,19 @@ export interface WalletState {
     } | null;
 }
 
-const NETWORK_NAMES: Record<string, string> = {
-    '0x1': 'Ethereum Mainnet',
-    '0x2105': 'Base Mainnet',
-    '0x14a34': 'Base Sepolia',
-    '0x7a69': 'Hardhat Local', // 31337
-    '0x539': 'Localhost', // 1337
+const NETWORK_NAMES: Record<number, string> = {
+    1: 'Ethereum Mainnet',
+    8453: 'Base Mainnet',
+    84532: 'Base Sepolia',
+    31337: 'Hardhat Local',
 };
 
 export function useWallet() {
+    const { address: wagmiAddress, status: wagmiStatus, isConnected } = useAccount();
+    const { disconnect: wagmiDisconnect } = useDisconnect();
+    const { signMessageAsync } = useSignMessage();
+    const chainId = useChainId();
+
     const [state, setState] = useState<WalletState>({
         address: null,
         chainId: null,
@@ -37,90 +42,80 @@ export function useWallet() {
     });
 
     // Handle chain ID
-    const getNetworkName = useCallback((chainId: string | null) => {
-        if (!chainId) return 'Unknown Network';
-        return NETWORK_NAMES[chainId] || `Chain ID: ${parseInt(chainId, 16)}`;
+    const getNetworkName = useCallback((id: number | null) => {
+        if (!id) return 'Unknown Network';
+        return NETWORK_NAMES[id] || `Chain ID: ${id}`;
     }, []);
 
-    // Check for existing connection on mount
+    // Sync Wagmi state with local state and check auth
     useEffect(() => {
-        const token = localStorage.getItem('auth_token');
-        const merchantData = localStorage.getItem('merchant');
-
-        if (token && merchantData) {
-            try {
-                const merchant = JSON.parse(merchantData);
+        const syncState = async () => {
+            // If Wagmi is disconnected, reset everything
+            if (wagmiStatus === 'disconnected') {
                 setState(prev => ({
                     ...prev,
-                    address: merchant.walletAddress,
-                    status: 'connected',
-                    isAuthenticated: true,
-                    merchant,
+                    address: null,
+                    chainId: null,
+                    status: 'disconnected',
+                    isAuthenticated: false,
+                    merchant: null
                 }));
-            } catch {
-                localStorage.removeItem('auth_token');
-                localStorage.removeItem('merchant');
+                return;
             }
-        }
 
-        // Get initial chain ID
-        if (typeof window !== 'undefined' && window.ethereum) {
-            window.ethereum.request({ method: 'eth_chainId' })
-                .then((result: unknown) => {
-                    const chainId = result as string;
-                    setState(prev => ({ ...prev, chainId }));
-                })
-                .catch(() => { });
-        }
-    }, []);
+            // If Wagmi is connected, check if we are authenticated
+            if (wagmiStatus === 'connected' && wagmiAddress) {
+                const token = localStorage.getItem('auth_token');
+                const merchantData = localStorage.getItem('merchant');
+                const storedAddress = merchantData ? JSON.parse(merchantData).walletAddress : null;
 
-    // Listen for account and chain changes
-    useEffect(() => {
-        if (typeof window === 'undefined' || !window.ethereum) return;
+                // Valid auth for CURRENT wallet
+                if (token && merchantData && storedAddress === wagmiAddress) {
+                    setState({
+                        address: wagmiAddress,
+                        chainId: String(chainId),
+                        status: 'connected',
+                        error: null,
+                        isAuthenticated: true,
+                        merchant: JSON.parse(merchantData),
+                    });
+                } else {
+                    // Connected but not authenticated yet
+                    setState(prev => ({
+                        ...prev,
+                        address: wagmiAddress,
+                        chainId: String(chainId),
+                        status: 'connecting', // waiting for sig
+                        isAuthenticated: false,
+                        merchant: null
+                    }));
 
-        const handleAccountsChanged = (accounts: unknown) => {
-            const accountList = accounts as string[];
-            if (accountList.length === 0) {
-                disconnect();
-            } else if (state.address && accountList[0] !== state.address) {
-                disconnect();
+                    // Optional: Trigger sign in automatically or wait for user action?
+                    // For now, we'll let the user trigger 'connect' (which is now 'login') explicitly
+                    // OR we can trigger it: cancel previous logic.
+                    // Let's just update the state so the UI knows we are "Wallet Connected" but "Not App Logged In"
+                }
             }
         };
 
-        const handleChainChanged = (chainId: unknown) => {
-            setState(prev => ({ ...prev, chainId: chainId as string }));
-        };
+        syncState();
+    }, [wagmiStatus, wagmiAddress, chainId]);
 
-        window.ethereum.on?.('accountsChanged', handleAccountsChanged);
-        window.ethereum.on?.('chainChanged', handleChainChanged);
-
-        return () => {
-            window.ethereum?.removeListener?.('accountsChanged', handleAccountsChanged);
-            window.ethereum?.removeListener?.('chainChanged', handleChainChanged);
-        };
-    }, [state.address]);
 
     const connect = useCallback(async () => {
-        setState(prev => ({ ...prev, status: 'connecting', error: null }));
+        // This function now effectively serves as "Login with Wallet"
+        // because "Connecting" is handled by OnchainKit button.
+
+        if (!wagmiAddress) {
+            // If called while wallet not connected, we can't do much. 
+            // The UI should encourage using the OnchainKit button.
+            setState(prev => ({ ...prev, error: "Please connect your wallet first." }));
+            return { success: false, error: "Wallet not connected" };
+        }
+
+        setState(prev => ({ ...prev, status: 'signing', error: null }));
 
         try {
-            if (typeof window === 'undefined' || !window.ethereum) {
-                throw new Error('No Web3 wallet found. Please install MetaMask or Coinbase Wallet.');
-            }
-
-            const accounts = await window.ethereum.request({
-                method: 'eth_requestAccounts',
-            }) as string[];
-
-            if (!accounts || accounts.length === 0) {
-                throw new Error('No accounts found. Please connect your wallet.');
-            }
-
-            const walletAddress = accounts[0];
-            const chainId = await window.ethereum.request({ method: 'eth_chainId' }) as string;
-
-            setState(prev => ({ ...prev, address: walletAddress, chainId, status: 'signing' }));
-
             const messageResponse = await api.auth.getMessage();
             if (!messageResponse.success || !messageResponse.data) {
                 throw new Error('Failed to get authentication message from server.');
@@ -128,12 +123,9 @@ export function useWallet() {
 
             const message = messageResponse.data.message;
 
-            const signature = await window.ethereum.request({
-                method: 'personal_sign',
-                params: [message, walletAddress],
-            }) as string;
+            const signature = await signMessageAsync({ message });
 
-            const authResponse = await api.auth.connectWallet(walletAddress, signature);
+            const authResponse = await api.auth.connectWallet(wagmiAddress, signature);
 
             if (!authResponse.success || !authResponse.data) {
                 throw new Error(authResponse.error?.message || 'Authentication failed.');
@@ -145,8 +137,6 @@ export function useWallet() {
 
             setState(prev => ({
                 ...prev,
-                address: walletAddress,
-                chainId,
                 status: 'connected',
                 error: null,
                 isAuthenticated: true,
@@ -164,11 +154,12 @@ export function useWallet() {
             }));
             return { success: false, error: errorMessage };
         }
-    }, []);
+    }, [wagmiAddress, signMessageAsync]);
 
     const disconnect = useCallback(() => {
         localStorage.removeItem('auth_token');
         localStorage.removeItem('merchant');
+        wagmiDisconnect();
 
         setState({
             address: null,
@@ -178,35 +169,25 @@ export function useWallet() {
             isAuthenticated: false,
             merchant: null,
         });
-    }, []);
+    }, [wagmiDisconnect]);
 
     const checkConnection = useCallback(async () => {
-        if (typeof window === 'undefined' || !window.ethereum) {
-            return false;
-        }
-
-        try {
-            const accounts = await window.ethereum.request({
-                method: 'eth_accounts',
-            }) as string[];
-
-            return accounts.length > 0;
-        } catch {
-            return false;
-        }
-    }, []);
+        return isConnected;
+    }, [isConnected]);
 
     // Format address for display
-    const formatAddress = useCallback((address: string | null) => {
-        if (!address) return '';
-        return `${address.slice(0, 6)}...${address.slice(-4)}`;
+    const formatAddress = useCallback((addr: string | null) => {
+        if (!addr) return '';
+        return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
     }, []);
+
+    // Auto-login if we have a token (handled in useEffect, but we ensure structure matches)
 
     return {
         ...state,
         formattedAddress: formatAddress(state.address),
-        networkName: getNetworkName(state.chainId),
-        connect,
+        networkName: getNetworkName(typeof chainId === 'number' ? chainId : null),
+        connect, // This is now "Sign In"
         disconnect,
         checkConnection,
     };

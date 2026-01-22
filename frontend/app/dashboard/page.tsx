@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useAccount, useBalance } from 'wagmi';
 import {
     Copy,
     Code,
@@ -12,7 +13,7 @@ import {
     Check,
     X,
     ChevronDown,
-    Wallet,
+    Wallet as WalletIcon,
     TrendingUp,
     Users,
     User,
@@ -29,6 +30,17 @@ import { api, Plan, DashboardMetrics, BillingLog, Subscriber } from "../lib/api"
 import { createPlanOnchain } from "../lib/contract";
 
 export default function DashboardPage() {
+    // Wagmi Hooks for Wallet Status
+    const { address } = useAccount();
+    const { data: balanceData } = useBalance({
+        address: address,
+    });
+
+    // Helper to format balance to 3 decimal places
+    const formattedBalance = balanceData
+        ? `${parseFloat(balanceData.formatted).toFixed(3)} ${balanceData.symbol}`
+        : '0 ETH';
+
     const router = useRouter();
     const [currency, setCurrency] = useState<"IDR" | "USD">("USD");
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -146,20 +158,23 @@ export default function DashboardPage() {
                         </div>
 
                         {/* Network Status */}
-                        <div className="hidden md:flex items-center gap-2 bg-zinc-900 border border-white/10 rounded-full px-4 py-2">
-                            <div className={`w-2 h-2 rounded-full ${networkName?.includes('Base') || networkName?.includes('Local') ? 'bg-green-500' : 'bg-amber-500'} animate-pulse`}></div>
+                        <div className="hidden md:flex items-center gap-2 bg-zinc-900 border border-white/10 rounded-full px-4 h-[42px]">
+                            <div className={`w-2 h-2 rounded-full ${networkName?.includes('Base') ? 'bg-orange-500' : 'bg-red-500'}`}></div>
                             <span className="text-sm text-zinc-300 font-medium">
-                                {networkName || 'Connecting...'}
+                                {networkName || 'Network'}
                             </span>
                         </div>
 
-                        {/* Wallet Status */}
-                        <div className="flex items-center gap-2 bg-zinc-900 border border-white/10 rounded-full px-4 py-2">
+                        {/* Custom Wallet Status Pill */}
+                        <div className="flex items-center gap-2 bg-zinc-900 border border-white/10 rounded-full px-4 h-[42px]">
                             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                            <span className="text-sm text-zinc-300 font-mono">
-                                {formattedAddress || merchant?.walletAddress?.slice(0, 6) + '...' + merchant?.walletAddress?.slice(-4) || 'Connected'}
+                            <span className="text-sm font-medium text-white">
+                                {formattedBalance}
                             </span>
-                            <Wallet className="w-4 h-4 text-zinc-500" />
+                            <span className="text-sm font-mono text-zinc-400 ml-2">
+                                {address?.slice(0, 6)}...{address?.slice(-4)}
+                            </span>
+                            <WalletIcon className="w-4 h-4 text-zinc-500 ml-2" />
                         </div>
 
                         {/* Switch to Subscriber View */}

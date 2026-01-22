@@ -7,6 +7,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { api } from "../lib/api";
+import { useConnect, useAccount, useSignMessage } from "wagmi";
 
 type ConnectionStatus = "idle" | "connecting" | "signing" | "success" | "error";
 
@@ -16,37 +17,32 @@ export default function SignupPage() {
     const [error, setError] = useState<string | null>(null);
     const [connectedWallet, setConnectedWallet] = useState<string | null>(null);
 
+    const { connectAsync, connectors } = useConnect();
+    const { signMessageAsync } = useSignMessage();
+    const { isConnected } = useAccount();
+
     const connectWallet = async (walletType: "metamask" | "coinbase") => {
         setStatus("connecting");
         setError(null);
 
         try {
-            // Check if ethereum provider exists
-            if (typeof window === "undefined" || !window.ethereum) {
-                throw new Error(
-                    walletType === "metamask"
-                        ? "MetaMask is not installed. Please install MetaMask extension."
-                        : "Coinbase Wallet is not installed. Please install Coinbase Wallet extension."
-                );
+            // Step 1: Request account access via Wagmi
+            console.log("Step 1: Connecting wallet via Wagmi...");
+
+            // Find appropriate connector
+            const connector = connectors.find(c =>
+                walletType === "coinbase"
+                    ? c.id === "coinbaseWalletSDK"
+                    : c.id === "injected"
+            );
+
+            if (!connector) {
+                throw new Error(`Wallet connector for ${walletType} not found.`);
             }
 
-            // Step 1: Request account access
-            console.log("Step 1: Requesting accounts...");
-            let accounts: string[];
-            try {
-                accounts = await window.ethereum.request({
-                    method: "eth_requestAccounts",
-                }) as string[];
-            } catch (accountErr) {
-                console.error("Account request error:", accountErr);
-                throw new Error("Failed to connect wallet. Please approve the connection in your wallet.");
-            }
+            const result = await connectAsync({ connector });
+            const walletAddress = result.accounts[0];
 
-            if (!accounts || accounts.length === 0) {
-                throw new Error("No accounts found. Please connect your wallet.");
-            }
-
-            const walletAddress = accounts[0];
             setConnectedWallet(walletAddress);
             console.log("Connected wallet:", walletAddress);
 
@@ -69,14 +65,11 @@ export default function SignupPage() {
             const message = messageResponse.data.message;
             console.log("Message to sign:", message);
 
-            // Step 3: Request signature from wallet
+            // Step 3: Request signature from wallet via Wagmi
             console.log("Step 3: Requesting signature...");
             let signature: string;
             try {
-                signature = await window.ethereum.request({
-                    method: "personal_sign",
-                    params: [message, walletAddress],
-                }) as string;
+                signature = await signMessageAsync({ message });
             } catch (signErr) {
                 console.error("Signature error:", signErr);
                 throw new Error("Signature request was rejected. Please sign the message to authenticate.");
@@ -122,16 +115,11 @@ export default function SignupPage() {
             if (err instanceof Error) {
                 errorMessage = err.message;
             } else if (typeof err === 'object' && err !== null) {
-                // MetaMask and other wallets return error objects
                 const errorObj = err as { message?: string; code?: number; reason?: string };
                 if (errorObj.message) {
                     errorMessage = errorObj.message;
                 } else if (errorObj.reason) {
                     errorMessage = errorObj.reason;
-                } else if (errorObj.code === 4001) {
-                    errorMessage = "Connection request was rejected. Please try again.";
-                } else if (errorObj.code === -32002) {
-                    errorMessage = "A connection request is already pending. Please check your wallet.";
                 }
             } else if (typeof err === 'string') {
                 errorMessage = err;
