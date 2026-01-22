@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  # Local Hardhat Node
+  hardhat:
+    build: ./contracts
+    ports:
+      - "8545:8545"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8545"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  # Main API + Frontend
+  basestack:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - JWT_SECRET=${JWT_SECRET:-basestack-dev-secret-key-32chars}
+      - DATABASE_PATH=/app/data/database.sqlite
+      - RPC_URL=http://hardhat:8545
+      - PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+      - CONTRACT_ADDRESS=${CONTRACT_ADDRESS:-0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9}
+      - TOKEN_IDRX=${TOKEN_IDRX:-0x5FbDB2315678afecb367f032d93F642f64180aa3}
+      - TOKEN_USDC=${TOKEN_USDC:-0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512}
+      - TOKEN_USDT=${TOKEN_USDT:-0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0}
+    volumes:
+      - basestack-data:/app/data
+    depends_on:
+      hardhat:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  basestack-data:
