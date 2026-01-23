@@ -27,6 +27,7 @@ function initCheckout(planId, walletAddress, selectedToken, country) {
 
   return {
     planId: plan.id,
+    onchainPlanId: plan.onchainPlanId,
     planName: plan.name,
     amount,
     selectedToken,

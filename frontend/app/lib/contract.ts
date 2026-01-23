@@ -20,6 +20,51 @@ export function getTokenAddress(symbol: string): string {
     }
 }
 
+// Ensure wallet is on Base Sepolia
+export async function ensureBaseSepolia() {
+    if (typeof window === "undefined" || !window.ethereum) return;
+
+    // Base Sepolia Chain ID: 84532 (0x14a34)
+    const TARGET_CHAIN_ID = '0x14a34';
+
+    try {
+        const currentChainId = await window.ethereum.request({ method: 'eth_chainId' });
+        if (currentChainId !== TARGET_CHAIN_ID) {
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: TARGET_CHAIN_ID }],
+                });
+            } catch (switchError: any) {
+                // This error code indicates that the chain has not been added to MetaMask.
+                if (switchError.code === 4902) {
+                    await window.ethereum.request({
+                        method: 'wallet_addEthereumChain',
+                        params: [
+                            {
+                                chainId: TARGET_CHAIN_ID,
+                                chainName: 'Base Sepolia',
+                                rpcUrls: ['https://sepolia.base.org'],
+                                blockExplorerUrls: ['https://sepolia-explorer.base.org'],
+                                nativeCurrency: {
+                                    name: 'Ether',
+                                    symbol: 'ETH',
+                                    decimals: 18
+                                }
+                            },
+                        ],
+                    });
+                } else {
+                    throw switchError;
+                }
+            }
+        }
+    } catch (error) {
+        console.error("Failed to switch network:", error);
+        throw new Error("Please switch your wallet to Base Sepolia network");
+    }
+}
+
 // ERC20 ABI (minimal for approve and allowance)
 export const ERC20_ABI = [
     "function approve(address spender, uint256 amount) returns (bool)",
@@ -97,6 +142,7 @@ export async function createPlanOnchain(
     priceUsdt: string,
     billingIntervalSeconds: number
 ): Promise<{ txHash: string; planId: number }> {
+    await ensureBaseSepolia();
     const signer = await getSigner();
     const contract = getSubscriptionManagerContract(signer);
 
@@ -147,6 +193,7 @@ export async function subscribeOnchain(
     tokenSymbol: string,
     amount: string | number
 ): Promise<{ txHash: string; approveTxHash?: string }> {
+    await ensureBaseSepolia();
     const signer = await getSigner();
     const userAddress = await signer.getAddress();
     const tokenAddress = getTokenAddress(tokenSymbol);
@@ -189,6 +236,7 @@ export async function subscribeOnchain(
  * Cancel a subscription on-chain
  */
 export async function cancelSubscriptionOnchain(planId: number): Promise<{ txHash: string }> {
+    await ensureBaseSepolia();
     const signer = await getSigner();
     const contract = getSubscriptionManagerContract(signer);
 

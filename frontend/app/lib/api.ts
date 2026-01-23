@@ -90,6 +90,7 @@ export interface CheckoutInfo {
 export interface PriceRates {
     USD_TO_IDR: number;
     updatedAt: string;
+    source?: string;
 }
 
 // Helper function to get auth token

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAccount, useBalance } from 'wagmi';
+import { useAccount, useBalance, useSwitchChain, useChainId } from 'wagmi';
 import {
     Copy,
     Code,
@@ -21,7 +21,8 @@ import {
     ExternalLink,
     MoreVertical,
     Loader2,
-    LogOut
+    LogOut,
+    RotateCw
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -37,7 +38,7 @@ import {
     Identity,
     EthBalance,
 } from '@coinbase/onchainkit/identity';
-import { useDashboard, usePlans, useBillingLogs, useSubscribers, useMerchantProfile } from "../hooks/useApi";
+import { useDashboard, usePlans, useBillingLogs, useSubscribers, useMerchantProfile, usePrices } from "../hooks/useApi";
 import { useWallet } from "../hooks/useWallet";
 import { api, Plan, DashboardMetrics, BillingLog, Subscriber } from "../lib/api";
 import { createPlanOnchain } from "../lib/contract";
@@ -69,6 +70,7 @@ export default function DashboardPage() {
     const { logs: billingLogs, loading: logsLoading } = useBillingLogs();
     const { subscribers, loading: subscribersLoading } = useSubscribers();
     const { profile: merchantProfile } = useMerchantProfile();
+    const { rates } = usePrices();
 
     // State for edit plan and embed modal
     const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
@@ -104,17 +106,21 @@ export default function DashboardPage() {
     // Format MRR for display
     const formatMRR = (mrr: number) => {
         if (currency === "USD") {
-            // Assuming MRR is in smallest unit, convert to USD
+            // Assuming MRR is in smallest unit (USDC has 6 decimals), convert to USD
             return `$${(mrr / 1000000).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         } else {
-            // Convert to IDR (assuming 1 USD = 16000 IDR)
-            const idr = (mrr / 1000000) * 16000;
-            return `Rp ${idr.toLocaleString()}`;
+            // Convert to IDR using real-time rate or fallback
+            const rate = rates?.USD_TO_IDR || 16000;
+            const idr = (mrr / 1000000) * rate;
+            return `Rp ${idr.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
         }
     };
 
     // Generate checkout link from plan slug
     const getPlanLink = (plan: Plan) => {
+        if (typeof window !== 'undefined') {
+            return `${window.location.host}/checkout/${plan.slug}`;
+        }
         return `basestack.xyz/checkout/${plan.slug}`;
     };
 
@@ -343,20 +349,20 @@ export default function DashboardPage() {
                                         <div className="flex items-center gap-2 text-sm">
                                             <span className="text-lg">🇮🇩</span>
                                             <span className="text-zinc-400">IDRX:</span>
-                                            <span className="text-white font-bold">Rp {parseInt(plan.priceIdrx).toLocaleString()}</span>
+                                            <span className="text-white font-bold">Rp {parseInt(plan.priceIdrx || '0').toLocaleString('id-ID')}</span>
                                         </div>
                                         <div className="flex items-center gap-2 text-sm">
                                             <span className="text-lg">🌏</span>
                                             <span className="text-zinc-400">USDC:</span>
-                                            <span className="text-white font-bold">{plan.priceUsdc} USDC</span>
+                                            <span className="text-white font-bold">{parseFloat(plan.priceUsdc || '0').toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC</span>
                                         </div>
                                     </div>
 
                                     {/* Meta */}
                                     <div className="flex items-center justify-between text-sm text-zinc-500 mb-2">
                                         <span>{formatBillingInterval(plan.billingInterval)}</span>
-                                        <span className={plan.status === 'active' ? "text-green-400" : "text-zinc-500"}>
-                                            {plan.status === 'active' ? "Active" : "Inactive"}
+                                        <span className={(plan.status === 'active' || plan.isActive) ? "text-green-400" : "text-zinc-500"}>
+                                            {(plan.status === 'active' || plan.isActive) ? "Active" : "Inactive"}
                                         </span>
                                     </div>
                                     {plan.description && (
@@ -455,15 +461,15 @@ export default function DashboardPage() {
                                                 <tr key={log.id} className="border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors">
                                                     <td className="py-4 px-6">
                                                         <span className="text-sm font-mono text-white">
-                                                            {log.subscriberWallet?.slice(0, 6)}...{log.subscriberWallet?.slice(-4)}
+                                                            {log.subscriberWallet ? `${log.subscriberWallet.slice(0, 6)}...${log.subscriberWallet.slice(-4)}` : 'N/A'}
                                                         </span>
                                                     </td>
                                                     <td className="py-4 px-6">
-                                                        <span className="text-sm text-zinc-300">{log.planName}</span>
+                                                        <span className="text-sm text-zinc-300">{log.planName || 'Unknown Plan'}</span>
                                                     </td>
                                                     <td className="py-4 px-6">
                                                         <span className="text-sm font-bold text-white">
-                                                            {log.amount} {log.payToken}
+                                                            {parseFloat(log.amount || '0').toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })} {log.payToken || 'USDC'}
                                                         </span>
                                                     </td>
                                                     <td className="py-4 px-6">
@@ -522,11 +528,11 @@ export default function DashboardPage() {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {subscribers.map((sub: Subscriber, index: number) => (
-                                                <tr key={index} className="border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors">
+                                            {subscribers.map((sub: Subscriber) => (
+                                                <tr key={sub.id} className="border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors">
                                                     <td className="py-4 px-6">
                                                         <span className="text-sm font-mono text-white">
-                                                            {sub.walletAddress?.slice(0, 6)}...{sub.walletAddress?.slice(-4)}
+                                                            {sub.walletAddress ? `${sub.walletAddress.slice(0, 6)}...${sub.walletAddress.slice(-4)}` : 'N/A'}
                                                         </span>
                                                     </td>
                                                     <td className="py-4 px-6">
@@ -622,13 +628,19 @@ function CreatePlanModal({
     const [error, setError] = useState<string | null>(null);
 
     const { createPlan } = usePlans();
+    const { rates, refetch: refetchRates } = usePrices();
+    const { switchChainAsync } = useSwitchChain();
+    const chainId = useChainId();
+    const BASE_SEPOLIA_ID = 84532;
 
     const handleIDRXChange = (value: string) => {
         setPriceIDRX(value);
-        // Auto-calculate USD equivalent (mock rate: 1 USD = 16,000 IDR)
+        // Auto-calculate USD equivalent using real-time rate
         const numValue = parseFloat(value.replace(/,/g, ""));
+        const rate = rates?.USD_TO_IDR || 16000;
+
         if (!isNaN(numValue)) {
-            const usdValue = (numValue / 16000).toFixed(2);
+            const usdValue = (numValue / rate).toFixed(2);
             setPriceUSDC(usdValue);
             setPriceUSDT(usdValue);
         }
@@ -637,6 +649,15 @@ function CreatePlanModal({
     const handleUSDCChange = (value: string) => {
         setPriceUSDC(value);
         setPriceUSDT(value); // Keep USDT same as USDC
+
+        // Auto-calculate IDR equivalent
+        const numValue = parseFloat(value);
+        const rate = rates?.USD_TO_IDR || 16000;
+
+        if (!isNaN(numValue)) {
+            const idrValue = (numValue * rate).toFixed(0);
+            setPriceIDRX(idrValue);
+        }
     };
 
     const validateForm = () => {
@@ -665,6 +686,16 @@ function CreatePlanModal({
                 // Ensure wallet is connected
                 if (typeof window !== "undefined" && !window.ethereum) {
                     throw new Error("Please install a wallet to create on-chain plans");
+                }
+
+                // Force switch to Base Sepolia if not connected
+                if (chainId !== BASE_SEPOLIA_ID) {
+                    try {
+                        await switchChainAsync({ chainId: BASE_SEPOLIA_ID });
+                    } catch (switchError) {
+                        console.error("Failed to switch network:", switchError);
+                        throw new Error("Please switch your wallet to Base Sepolia network");
+                    }
                 }
 
                 // Create plan on-chain
@@ -746,6 +777,12 @@ function CreatePlanModal({
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
                         className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                        onClick={(e) => {
+                            // Close modal if clicking on the backdrop (not the modal content)
+                            if (e.target === e.currentTarget) {
+                                onClose();
+                            }
+                        }}
                     >
                         <div className="bg-zinc-900 border border-white/10 rounded-2xl w-full max-w-md p-6 relative max-h-[90vh] overflow-y-auto">
                             {/* Close Button */}
@@ -806,7 +843,26 @@ function CreatePlanModal({
                                     <div className="flex items-center gap-2 mb-3">
                                         <span className="text-sm font-bold text-white">💡 Smart Pricing</span>
                                     </div>
-                                    <p className="text-xs text-zinc-500 mb-3">Set your price. We handle the conversion.</p>
+                                    <div className="flex items-start justify-between gap-4 mb-3">
+                                        <p className="text-xs text-zinc-500">
+                                            Set your price. We handle the conversion.
+                                            {rates && (
+                                                <span className="block mt-1 text-green-500 font-mono">
+                                                    1 USD ≈ {rates.USD_TO_IDR.toLocaleString()} IDR
+                                                    <span className="text-zinc-600 ml-1 text-[10px]">
+                                                        via {rates.source || 'CoinGecko'}
+                                                    </span>
+                                                </span>
+                                            )}
+                                        </p>
+                                        <button
+                                            onClick={() => refetchRates()}
+                                            className="p-1.5 hover:bg-white/5 rounded-lg text-zinc-500 hover:text-white transition-colors"
+                                            title="Refresh Rates"
+                                        >
+                                            <RotateCw className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
 
                                     <div className="grid grid-cols-2 gap-3">
                                         {/* Local Price */}
@@ -938,6 +994,7 @@ function EditPlanModal({
                     exit={{ opacity: 0 }}
                     onClick={onClose}
                     className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+                    aria-label="Close modal"
                 />
 
                 {/* Modal */}
@@ -946,6 +1003,12 @@ function EditPlanModal({
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 20 }}
                     className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    onClick={(e) => {
+                        // Close modal if clicking on the backdrop (not the modal content)
+                        if (e.target === e.currentTarget) {
+                            onClose();
+                        }
+                    }}
                 >
                     <div className="bg-zinc-900 border border-white/10 rounded-2xl w-full max-w-md p-6 relative">
                         {/* Close Button */}
@@ -1009,15 +1072,15 @@ function EditPlanModal({
                                 <div className="grid grid-cols-3 gap-2 text-sm">
                                     <div>
                                         <span className="text-zinc-500">IDRX</span>
-                                        <p className="text-white font-medium">{plan.priceIdrx}</p>
+                                        <p className="text-white font-medium">Rp {parseInt(plan.priceIdrx || '0').toLocaleString('id-ID')}</p>
                                     </div>
                                     <div>
                                         <span className="text-zinc-500">USDC</span>
-                                        <p className="text-white font-medium">{plan.priceUsdc}</p>
+                                        <p className="text-white font-medium">{parseFloat(plan.priceUsdc || '0').toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                                     </div>
                                     <div>
                                         <span className="text-zinc-500">USDT</span>
-                                        <p className="text-white font-medium">{plan.priceUsdt}</p>
+                                        <p className="text-white font-medium">{parseFloat(plan.priceUsdt || '0').toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                                     </div>
                                 </div>
                             </div>
@@ -1097,6 +1160,7 @@ function EmbedCodeModal({
                     exit={{ opacity: 0 }}
                     onClick={onClose}
                     className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+                    aria-label="Close modal"
                 />
 
                 {/* Modal */}
@@ -1105,6 +1169,12 @@ function EmbedCodeModal({
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 20 }}
                     className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    onClick={(e) => {
+                        // Close modal if clicking on the backdrop (not the modal content)
+                        if (e.target === e.currentTarget) {
+                            onClose();
+                        }
+                    }}
                 >
                     <div className="bg-zinc-900 border border-white/10 rounded-2xl w-full max-w-lg p-6 relative">
                         {/* Close Button */}

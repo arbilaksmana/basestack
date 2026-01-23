@@ -113,7 +113,8 @@ export function useDashboard() {
 
     useEffect(() => {
         fetchMetrics();
-    }, [fetchMetrics]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     return { metrics, loading, error, refetch: fetchMetrics };
 }
@@ -169,7 +170,8 @@ export function usePlans() {
 
     useEffect(() => {
         fetchPlans();
-    }, [fetchPlans]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     return { plans, loading, error, createPlan, updatePlan, refetch: fetchPlans };
 }
@@ -198,7 +200,8 @@ export function useBillingLogs() {
 
     useEffect(() => {
         fetchLogs();
-    }, [fetchLogs]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     return { logs, loading, error, refetch: fetchLogs };
 }
@@ -227,7 +230,8 @@ export function useSubscribers() {
 
     useEffect(() => {
         fetchSubscribers();
-    }, [fetchSubscribers]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     return { subscribers, loading, error, refetch: fetchSubscribers };
 }
@@ -305,7 +309,13 @@ export function usePrices() {
 
     useEffect(() => {
         fetchRates();
-    }, [fetchRates]);
+
+        // Poll for price updates every 15 seconds
+        const intervalId = setInterval(fetchRates, 15000);
+
+        return () => clearInterval(intervalId);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     return { rates, loading, error, convertUsdToIdrx, refetch: fetchRates };
 }
@@ -413,7 +423,8 @@ export function useMerchantProfile() {
 
     useEffect(() => {
         fetchProfile();
-    }, [fetchProfile]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     return { profile, loading, error, updateProfile, refetch: fetchProfile };
 }

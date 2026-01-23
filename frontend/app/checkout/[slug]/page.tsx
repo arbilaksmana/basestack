@@ -18,7 +18,7 @@ import {
     Wallet
 } from "lucide-react";
 import { api } from "../../lib/api";
-import { subscribeOnchain, getTokenBalance } from "../../lib/contract";
+import { subscribeOnchain, getTokenBalance, getPlanOnchain, ensureBaseSepolia } from "../../lib/contract";
 
 // Token type
 interface CurrencyOption {
@@ -48,6 +48,7 @@ export default function CheckoutPage() {
             USDT: string;
         };
         merchantName?: string;
+        onchainPlanId?: number;
     } | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -59,6 +60,8 @@ export default function CheckoutPage() {
     const [walletAddress, setWalletAddress] = useState<string | null>(null);
     const [tokenBalance, setTokenBalance] = useState<string | null>(null);
     const [onchainPlanId, setOnchainPlanId] = useState<number | null>(null);
+    const [isOnchainActive, setIsOnchainActive] = useState<boolean | null>(null);
+    const [onchainChecking, setOnchainChecking] = useState(false);
 
     // Fetch plan details
     useEffect(() => {
@@ -72,6 +75,16 @@ export default function CheckoutPage() {
                 if (response.success && response.data) {
                     const planData = response.data;
                     setPlan(planData);
+
+                    // Verify On-chain Status
+                    if (planData.onchainPlanId) {
+                        checkOnchainStatus(planData.onchainPlanId);
+                    } else {
+                        // If backend doesn't return onchainPlanId, assume it might match ID or warn
+                        // For now we skip check or guess.
+                        // Ideally we fix backend.
+                        console.warn("No onchainPlanId returned from backend");
+                    }
 
                     // Build currency options from plan prices
                     const currencyOptions: CurrencyOption[] = [
@@ -109,6 +122,25 @@ export default function CheckoutPage() {
                 setError("Failed to load plan details");
             } finally {
                 setLoading(false);
+            }
+        }
+
+        async function checkOnchainStatus(id: number) {
+            setOnchainChecking(true);
+            try {
+                // We don't need to ensure network just to read? 
+                // Actually getPlanOnchain uses provider which might default to RPC_URL if not connected.
+                const onchainPlan = await getPlanOnchain(id);
+                if (!onchainPlan.active) {
+                    setError("This subscription plan is not active on the Base Sepolia network.");
+                }
+                setIsOnchainActive(onchainPlan.active);
+            } catch (err) {
+                console.error("Failed to check onchain plan:", err);
+                // Don't block UI but warn
+                // setError("Could not verify plan on blockchain. It may not exist.");
+            } finally {
+                setOnchainChecking(false);
             }
         }
 
@@ -153,6 +185,40 @@ export default function CheckoutPage() {
 
             const userWallet = accounts[0];
             setWalletAddress(userWallet);
+
+            // Force switch to Base Sepolia
+            const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+            if (chainId !== '0x14a34') { // 84532
+                setProcessingStep("Switching network...");
+                try {
+                    await window.ethereum.request({
+                        method: 'wallet_switchEthereumChain',
+                        params: [{ chainId: '0x14a34' }],
+                    });
+                } catch (switchError: any) {
+                    // This error code indicates that the chain has not been added to MetaMask.
+                    if (switchError.code === 4902) {
+                        await window.ethereum.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [
+                                {
+                                    chainId: '0x14a34',
+                                    chainName: 'Base Sepolia',
+                                    rpcUrls: ['https://sepolia.base.org'],
+                                    blockExplorerUrls: ['https://sepolia-explorer.base.org'],
+                                    nativeCurrency: {
+                                        name: 'Ether',
+                                        symbol: 'ETH',
+                                        decimals: 18
+                                    }
+                                },
+                            ],
+                        });
+                    } else {
+                        throw switchError;
+                    }
+                }
+            }
 
             // Check token balance
             setProcessingStep("Checking balance...");

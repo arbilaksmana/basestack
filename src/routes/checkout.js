@@ -19,6 +19,7 @@ router.get('/:planSlug', (req, res) => {
       slug: plan.slug,
       description: plan.description,
       billingInterval: plan.billingInterval,
+      onchainPlanId: plan.onchainPlanId,
       prices: {
         IDRX: plan.priceIdrx,
         USDC: plan.priceUsdc,

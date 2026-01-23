@@ -90,7 +90,15 @@ export default function PlanCreatedPage() {
         priceUsdc: searchParams.get("priceUsdc") || "0",
     };
 
-    const paymentLink = `https://basestack.xyz/checkout/${planData.slug}`;
+    const [origin, setOrigin] = useState("https://basestack.xyz");
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            setOrigin(window.location.origin);
+        }
+    }, []);
+
+    const paymentLink = `${origin}/checkout/${planData.slug}`;
 
     const embedCode = `<a href="${paymentLink}" 
    class="basestack-button" 

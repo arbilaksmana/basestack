@@ -6,10 +6,30 @@ let priceCache = {
   data: null,
   timestamp: 0
 };
-const CACHE_TTL = 60000; // 60 seconds
+const CACHE_TTL = 15000; // 15 seconds
 
 // IDRX is pegged to IDR (Indonesian Rupiah)
 // We'll fetch USD/IDR rate to calculate IDRX price
+// Providers configuration
+const PROVIDERS = [
+  {
+    name: 'Coinbase',
+    url: 'https://api.coinbase.com/v2/prices/USD-IDR/spot',
+    parser: (data) => parseFloat(data.data.amount)
+  },
+  {
+    name: 'CoinGecko',
+    url: 'https://api.coingecko.com/api/v3/simple/price?ids=usd-coin&vs_currencies=idr',
+    options: { headers: { 'User-Agent': 'BaseStack/1.0' } },
+    parser: (data) => data['usd-coin']?.idr
+  },
+  {
+    name: 'Frankfurter',
+    url: 'https://api.frankfurter.app/latest?from=USD&to=IDR',
+    parser: (data) => data.rates.IDR
+  }
+];
+
 async function fetchPrices() {
   const now = Date.now();
   
@@ -18,49 +38,65 @@ async function fetchPrices() {
     return priceCache.data;
   }
   
-  try {
-    // Fetch USD to IDR rate
-    const response = await fetch(
-      `${COINGECKO_API}/simple/price?ids=usd&vs_currencies=idr`
-    );
-    
-    if (!response.ok) {
-      throw new Error('Failed to fetch prices');
+  let usdToIdr = 0;
+  let providerName = '';
+
+  // Try providers sequentially
+  for (const provider of PROVIDERS) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
+      const response = await fetch(provider.url, { 
+        ...provider.options,
+        signal: controller.signal 
+      });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) throw new Error(`Status ${response.status}`);
+      
+      const data = await response.json();
+      const price = provider.parser(data);
+      
+      if (price && !isNaN(price) && price > 0) {
+        usdToIdr = price;
+        providerName = provider.name;
+        break; // Success
+      }
+    } catch (err) {
+      console.warn(`[PriceService] ${provider.name} failed:`, err.message);
     }
-    
-    const data = await response.json();
-    
-    // USD to IDR rate (approximately 15,500-16,500)
-    const usdToIdr = data.usd?.idr || 16000;
-    
-    const prices = {
-      USD_TO_IDR: usdToIdr,
-      USDC_TO_USD: 1, // Stablecoin pegged to USD
-      USDT_TO_USD: 1, // Stablecoin pegged to USD
-      IDRX_TO_IDR: 1, // IDRX pegged to IDR
-      updatedAt: new Date().toISOString()
-    };
-    
-    // Update cache
-    priceCache = {
-      data: prices,
-      timestamp: now
-    };
-    
-    return prices;
-  } catch (err) {
-    console.error('[PriceService] Error fetching prices:', err.message);
-    
-    // Return fallback prices if API fails
-    return {
-      USD_TO_IDR: 16000,
-      USDC_TO_USD: 1,
-      USDT_TO_USD: 1,
-      IDRX_TO_IDR: 1,
-      updatedAt: new Date().toISOString(),
-      isFallback: true
-    };
   }
+
+  // If all failed, check cache (even if expired) or use fallback
+  if (usdToIdr === 0) {
+    if (priceCache.data) {
+      console.warn('[PriceService] All providers failed, using stale cache.');
+      return priceCache.data;
+    }
+    console.error('[PriceService] CRITICAL: All providers failed, using hardcoded fallback.');
+    usdToIdr = 16000;
+  } else {
+    console.log(`[PriceService] Updated price from ${providerName}: 1 USD = ${usdToIdr} IDR`);
+  }
+    
+  // USD to IDR rate
+  const prices = {
+    USD_TO_IDR: usdToIdr,
+    USDC_TO_USD: 1, // Stablecoin pegged to USD
+    USDT_TO_USD: 1, // Stablecoin pegged to USD
+    IDRX_TO_IDR: 1, // IDRX pegged to IDR
+    updatedAt: new Date().toISOString(),
+    source: providerName || 'fallback'
+  };
+  
+  // Update cache
+  priceCache = {
+    data: prices,
+    timestamp: now
+  };
+  
+  return prices;
 }
 
 // Convert USD to IDRX amount
