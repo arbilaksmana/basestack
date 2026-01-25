@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -76,7 +76,7 @@ function Confetti() {
     );
 }
 
-export default function PlanCreatedPage() {
+function PlanCreatedContent() {
     const searchParams = useSearchParams();
     const [showConfetti, setShowConfetti] = useState(true);
     const [copiedLink, setCopiedLink] = useState(false);
@@ -338,5 +338,17 @@ export default function PlanCreatedPage() {
                 </div>
             </motion.div>
         </div>
+    );
+}
+
+export default function PlanCreatedPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+                <div className="text-zinc-500">Loading...</div>
+            </div>
+        }>
+            <PlanCreatedContent />
+        </Suspense>
     );
 }

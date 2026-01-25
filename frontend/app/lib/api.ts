@@ -246,6 +246,8 @@ export const checkoutApi = {
                 USDC: string;
                 USDT: string;
             };
+            merchantName?: string;
+            onchainPlanId?: number;
         }>(`/api/checkout/${planSlug}`),
 
     // Initialize checkout
