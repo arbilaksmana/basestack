@@ -50,3 +50,7 @@ contracts/node_modules/
 frontend/.next/
 out/
 build/
+
+# Docker
+Dockerfile
+docker-compose.yml
